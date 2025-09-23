@@ -36,14 +36,23 @@
 #include <kstdio.h>
 #include <sys_rtc.h>
 #include <kstring.h>
+
 #ifndef DEBUG
 #define DEBUG 1
 #endif
 void kmain(void)
-{
+{   
+    uint32_t count = 0;
     __sys_init();
     while (1)
     {
-      
+
+        kprintf("Nafis Shyan\r\n");
+        kprintf("2021811186\r\n");
+        kprintf("Roll: 10\r\n");
+        kprintf("------------------\r\n");
+        kprintf("Count: %d\r\n", count);
+        count++;
+        wait_until(2500);
     }
 }

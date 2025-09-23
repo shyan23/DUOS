@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.dbclient-js": "javascript",
         "clock.h": "c",
         "sys_init.h": "c",
         "stddef.h": "c",
@@ -23,7 +24,8 @@
         "mcu_info.h": "c",
         "m5stack_error.h": "c",
         "m5stack_cmd.h": "c",
-        "kstring.h": "c"
+        "kstring.h": "c",
+        "stm32f446xx.h": "c"
     },
     "cmake.configureOnOpen": false,
     "C_Cpp.errorSquiggles": "disabled"
