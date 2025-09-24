@@ -13,6 +13,13 @@ The Operating System must be:
 
 ---
 
+## How to run
+
+``` bash
+openocd -f board/st_nucleo_f4.cfg -c "program build/final.elf verify reset exit"
+```
+in the serial monitor, choose baud rate = 115200
+
 # DUOS Directory Structure  
 
 ```plaintext
