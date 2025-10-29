@@ -696,6 +696,13 @@ void SYS_SLEEP_WFI(void);
 * Functions on FPU
 **/
 void __enable_fpu(void);
+
+/**
+* Functions for task switching and mode control
+**/
+void switch_to_unprivileged_mode(uint32_t psp_value);
+void start_first_task(void);
+
 #ifdef __cplusplus
 }
 #endif

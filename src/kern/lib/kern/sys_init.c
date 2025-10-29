@@ -53,7 +53,7 @@ void __sys_init(void)
 	__enable_fpu(); //enable FPU single precision floating point unit
 	__ISB();
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	__SysTick_init(180000);	//enable systick for 1ms
+	__SysTick_init(1800000);	//enable systick for 10ms, (RELOAD = CPU MHZ / desired freq = 180MHz / 100Hz)
 	//SYS_RTC_init();
 	SerialLin2_init(__CONSOLE,0);
 	SerialLin6_init(&huart6,0);
@@ -62,16 +62,8 @@ void __sys_init(void)
 	ConfigTimer2ForSystem();
 	__ISB();
 	#ifdef DEBUG
-	kprintf("\n************************************\r\n");
-	kprintf("Booting Machine Intelligence System 1.0 .....\r\n");
-	kprintf("Copyright (c) 2024, Prof. Mosaddek Tushar, CSE, DU\r\n");
-	kprintf("CPUID %x\n", SCB->CPUID);
-	kprintf("OS Version: 2024.1.0.0\n");
-	kprintf("Time Elapse %d ms\n",__getTime());
-	kprintf("*************************************\r\n");
-	kprintf("# ");
-	show_system_info();
-	display_group_info();
+	kprintf("\r\n=== DUOS Boot ===\r\n");
+	kprintf("System Ready\r\n");
 	#endif
 }
 
@@ -89,7 +81,9 @@ void SYS_ROUTINE(void)
 * Each line displays a student or group member information
 */
 void display_group_info(void)
-{
+{	
+		kprintf("Displaying the group_info\r\n");
+		kprintf("\n");
         kprintf("Nafis Shyan\r\n");
         kprintf("2021811186\r\n");
         kprintf("Roll: 10\r\n");

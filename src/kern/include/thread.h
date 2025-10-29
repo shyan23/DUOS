@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 
+ * Copyright (c) 2022
  * Computer Science and Engineering, University of Dhaka
  * Credit: CSE Batch 25 (starter) and Prof. Mosaddek Tushar
  *
@@ -27,52 +27,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
- 
-#ifndef __SCHEDULE_H
-#define __SCHEDULE_H
+
+#ifndef __THREAD_H
+#define __THREAD_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <kern/types.h>
-#include <kmain.h>
+#include <stdint.h>
 
-/* Task states */
-#define TASK_STATE_READY       0x00
-#define TASK_STATE_RUNNING     0x01
-#define TASK_STATE_BLOCKED     0xFF
-#define TASK_STATE_TERMINATED  0x03
-
-/* Ready queue structure - circular linked list implementation */
-typedef struct {
-    TCB_TypeDef *head;   // Points to first task in queue
-    TCB_TypeDef *tail;   // Points to last task in queue (tail->next = head for circular)
-    uint8_t count;       // Number of tasks in queue
-} ReadyQueue_TypeDef;
-
-/* Global scheduler variables */
-extern TCB_TypeDef *current_task;
-extern ReadyQueue_TypeDef ready_queue;
-
-/* Ready queue functions */
-void ready_queue_init(void);
-int ready_queue_enqueue(TCB_TypeDef *tcb);
-TCB_TypeDef* ready_queue_dequeue(void);
-TCB_TypeDef* ready_queue_peek(void);
-int ready_queue_is_empty(void);
-int ready_queue_is_full(void);
-
-/* Scheduler functions */
-void scheduler_init(void);
-TCB_TypeDef* scheduler_get_next_task(void);
-void scheduler_add_task(TCB_TypeDef *tcb);
-void scheduler_remove_task(TCB_TypeDef *tcb);
+/* Task creation and management */
+TCB_TypeDef* task_create(void (*task_func)(void), uint8_t priority);
+void task_init_stack(TCB_TypeDef *tcb, void (*task_func)(void), uint32_t *stack_top);
+TCB_TypeDef* get_current_task(void);
+void set_current_task(TCB_TypeDef *tcb);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
-
-
+#endif /* __THREAD_H */

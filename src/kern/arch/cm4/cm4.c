@@ -52,6 +52,10 @@ void __SysTick_init(uint32_t reload)
     // The value is (reload - 1) because the countdown includes 0.
     SYSTICK->LOAD = reload - 1;
 
+    // Set PendSV priority to lowest (15) to ensure it doesn't preempt other ISRs
+    // PendSV is exception number 14, so we access SHP[10] (14-4=10)
+    SCB->SHP[10] = (uint8_t)((15 << (8U - __NVIC_PRIO_BITS)) & (uint32_t)0xFFUL);
+    
     // 3. Set the interrupt priority to the lowest level
     NVIC_SetPriority(SysTick_IRQn, 15); // 15 is the lowest interrupt value
     
@@ -59,7 +63,7 @@ void __SysTick_init(uint32_t reload)
     SYSTICK->VAL = 0;
 
     // 5. Select Processor Clock (AHB), enable SYSTICK interrupt, and enable the timer
-    SYSTICK->CTRL = SysTick_CTRL_CLKSOURCE_Msk | // Use processor clock
+    SYSTICK->CTRL = SysTick_CTRL_CLKSOURCE_Msk | // Use processor clock(AHB BUS), CPU CLOCK SPEED '10' is selected
                     SysTick_CTRL_TICKINT_Msk |   // Enable interrupt
                     SysTick_CTRL_ENABLE_Msk;     // Enable SysTick
 }
@@ -126,7 +130,7 @@ uint32_t __getTime(void)
 
 uint32_t __get__Second(void){
     // Assuming 1ms tick, divide by 1000 to get seconds
-    return g_sys_tick_count / 1000;
+    return __getTime() / 1000;
 }
 
 uint32_t __get__Minute(void){
@@ -145,12 +149,19 @@ uint32_t __get__Hour(void){
 * It is called automatically every time the SysTick counter reaches 0.
 * The name "SysTick_Handler" is fixed by ARM CMSIS and is defined in your
 * startup file (e.g., startup_stm32f446retx.s).
+*
+* Every 10ms (with reload value 1800000), this handler:
+* 1. Increments the system tick counter
+* 2. Triggers PendSV exception for task context switching
 **************************************************************************************/
 void SysTick_Handler(void)
 {
-    // This is the core of the tick timer. Every time the interrupt fires,
-    // we increment our global tick counter.
+    // Increment global tick counter (every 10ms)
     g_sys_tick_count++;
+
+    // Trigger PendSV exception for context switching
+    // This allows lower priority task switching after all higher priority ISRs complete
+    SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 }
 
 void __enable_fpu()
@@ -180,7 +191,7 @@ uint32_t getmsTick(void)
 
 uint32_t wait_until(uint32_t delay)
 {
-    // This function behaves identically to ms_delay
+    // This function behaves identically to ms_delay,but only for a long time
     uint32_t start_tick = g_sys_tick_count;
     while ((g_sys_tick_count - start_tick) < delay) {}
     return 0;
@@ -191,4 +202,68 @@ void SYS_SLEEP_WFI(void)
     // Wait For Interrupt: a low-power mode where the CPU stops until an
     // interrupt (like SysTick) occurs.
     __WFI();
+}
+
+/************************************************************************************
+* switch_to_unprivileged_mode()
+* Switches processor from Handler mode (privileged) to Thread mode (unprivileged)
+* and changes stack pointer from MSP to PSP.
+*
+* This function:
+* 1. Sets CONTROL register bit 0 (nPRIV) to enter unprivileged mode
+* 2. Sets CONTROL register bit 1 (SPSEL) to use PSP instead of MSP
+* 3. Executes ISB to ensure changes take effect
+**************************************************************************************/
+void switch_to_unprivileged_mode(uint32_t psp_value)
+{
+    __asm volatile (
+        "MSR PSP, %0        \n"  /* Set PSP to provided value */
+        "MRS R0, CONTROL    \n"  /* Read CONTROL register */
+        "ORR R0, R0, #3     \n"  /* Set bits 0 and 1 (nPRIV=1, SPSEL=1) */
+        "MSR CONTROL, R0    \n"  /* Write back to CONTROL */
+        "ISB                \n"  /* Instruction Sync Barrier - ensure changes take effect */
+        : : "r" (psp_value) : "r0"
+    );
+}
+
+/************************************************************************************
+* start_first_task()
+* Starts the first task by:
+* 1. Loading the first task's PSP
+* 2. Switching to Thread mode using PSP
+* 3. Enabling interrupts
+* 4. Jumping to the task
+*
+* This function should be called ONCE after scheduler initialization.
+* It never returns - execution continues in the first task.
+**************************************************************************************/
+__attribute__((naked)) void start_first_task(void)
+{
+    __asm volatile (
+        /* Load current_task pointer */
+        "LDR    R2, =current_task   \n"  /* Load address of current_task */
+        "LDR    R1, [R2]            \n"  /* Load current_task value */
+
+        /* Load PSP from current_task TCB */
+        "LDR    R0, [R1, #8]        \n"  /* Load PSP from TCB->psp (offset 8) */
+
+        /* Restore R4-R11 from task stack */
+        "LDMIA  R0!, {R4-R11}       \n"  /* Restore R4-R11 */
+
+        /* Set PSP */
+        "MSR    PSP, R0             \n"  /* Set Process Stack Pointer */
+
+        /* Switch to Thread mode, unprivileged, use PSP */
+        "MRS    R0, CONTROL         \n"  /* Read CONTROL register */
+        "ORR    R0, R0, #3          \n"  /* Set nPRIV=1, SPSEL=1 */
+        "MSR    CONTROL, R0         \n"  /* Write back */
+        "ISB                        \n"  /* Instruction barrier */
+
+        /* Enable interrupts */
+        "CPSIE  I                   \n"  /* Enable interrupts */
+
+        /* Return to first task using PSP */
+        "LDR    LR, =0xFFFFFFFD     \n"  /* EXC_RETURN: Thread mode, use PSP */
+        "BX     LR                  \n"  /* Branch - start executing task */
+    );
 }

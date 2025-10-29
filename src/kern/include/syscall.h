@@ -31,6 +31,19 @@
 #ifndef _SYSCALL_H
 #define _SYSCALL_H
 #include <stdint.h>
-void syscall(uint16_t);
+#include <types.h>
+
+/* Main syscall dispatcher - called by SVC_Handler */
+void syscall(uint32_t *svc_args);
+
+/* Kernel service functions - these implement the actual syscall logic */
+int32_t sys_write(int fd, const char *buf, size_t count);
+int32_t sys_read(int fd, char *buf, size_t count);
+void sys_exit(void);
+uint16_t sys_getpid(void);
+uint32_t sys_time(void);
+void sys_reboot(void);
+void sys_yield(void);
+
 #endif
 

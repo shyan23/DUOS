@@ -30,6 +30,80 @@
  
 #ifndef __UNISTD_H
 #define __UNISTD_H
-/* Basic input and output function */
+
+#include <stdint.h>
+#include <kern/syscall_def.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Syscall wrapper functions - invoke SVC to call kernel services */
+
+/* SYS_getpid - Get current process/task ID */
+static inline uint16_t getpid(void) {
+    uint16_t pid;
+    __asm volatile (
+        "MOV R0, %1     \n"  /* Load syscall number into R0 */
+        "SVC #0         \n"  /* Trigger SVC exception */
+        "MOV %0, R0     \n"  /* Get return value from R0 */
+        : "=r" (pid)
+        : "I" (SYS_getpid)
+        : "r0"
+    );
+    return pid;
+}
+
+/* SYS_time - Get system tick time in milliseconds */
+static inline uint32_t getSysTickTime(void) {
+    uint32_t time;
+    __asm volatile (
+        "MOV R0, %1     \n"  /* Load syscall number */
+        "SVC #0         \n"  /* Trigger SVC */
+        "MOV %0, R0     \n"  /* Get return value */
+        : "=r" (time)
+        : "I" (SYS___time)
+        : "r0"
+    );
+    return time;
+}
+
+/* SYS_yield - Voluntarily yield CPU to next task */
+static inline void yield(void) {
+    __asm volatile (
+        "MOV R0, %0     \n"  /* Load syscall number */
+        "SVC #0         \n"  /* Trigger SVC */
+        :
+        : "I" (SYS_yield)
+        : "r0"
+    );
+}
+
+/* SYS_exit - Terminate current process */
+static inline void exit(int status) {
+    __asm volatile (
+        "MOV R0, %0     \n"  /* Load syscall number */
+        "MOV R1, %1     \n"  /* Load exit status */
+        "SVC #0         \n"  /* Trigger SVC */
+        :
+        : "I" (SYS__exit), "r" (status)
+        : "r0", "r1"
+    );
+}
+
+/* SYS_reboot - Reboot the system */
+static inline void reboot(void) {
+    __asm volatile (
+        "MOV R0, %0     \n"  /* Load syscall number */
+        "SVC #0         \n"  /* Trigger SVC */
+        :
+        : "I" (SYS_reboot)
+        : "r0"
+    );
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
