@@ -30,6 +30,59 @@
  
 #ifndef __UNISTD_H
 #define __UNISTD_H
-/* Basic input and output function */
+
+#include <stdint.h>
+#include <stddef.h>
+
+/* Basic input and output functions */
+
+/**
+ * write() - Write data to a file descriptor
+ * @fd: File descriptor (STDOUT_FILENO for console output)
+ * @buf: Buffer containing data to write
+ * @count: Number of bytes to write
+ *
+ * Returns: Number of bytes written, or -1 on error
+ */
+int write(int fd, const void *buf, size_t count);
+
+/**
+ * read() - Read data from a file descriptor
+ * @fd: File descriptor (STDIN_FILENO for console input)
+ * @buf: Buffer to store read data
+ * @count: Maximum number of bytes to read
+ *
+ * Returns: Number of bytes read, or -1 on error
+ */
+int read(int fd, void *buf, size_t count);
+
+/**
+ * getpid() - Get current process/task ID
+ *
+ * Returns: Current task ID
+ */
+int getpid(void);
+
+/**
+ * exit() - Terminate the current task
+ */
+void exit(void);
+
+/**
+ * yield() - Voluntarily give up CPU to next task
+ */
+void yield(void);
+
+/**
+ * reboot() - Reboot the system
+ */
+void reboot(void);
+
+/**
+ * getSysTickTime() - Get system time in milliseconds
+ *
+ * Returns: Elapsed time in milliseconds since system start
+ */
+uint32_t getSysTickTime(void);
 
 #endif

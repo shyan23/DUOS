@@ -186,11 +186,118 @@ void BusFault_Handler(void)
 	while(1);
 }
 
-void SVCall_Handler(void){
-/* Write code for SVC handler */
-/* the handler function evntually call syscall function with a call number */
+/**
+ * SVCall_Handler_C() - C portion of SVC handler
+ * @stack_frame: Pointer to the stacked registers (R0-R3, R12, LR, PC, xPSR)
+ *
+ * This function is called by the assembly portion of SVCall_Handler.
+ * It extracts the syscall number and arguments from the stack frame,
+ * calls the appropriate kernel service, and stores the return value
+ * back into the stack frame so it will be in R0 when returning to user mode.
+ *
+ * Stack frame layout (offset from stack_frame pointer):
+ * [0] = R0 (contains service ID)
+ * [1] = R1 (first argument)
+ * [2] = R2 (second argument)
+ * [3] = R3 (third argument)
+ * [4] = R12
+ * [5] = LR
+ * [6] = PC (return address)
+ * [7] = xPSR
+ */
+void SVCall_Handler_C(uint32_t *stack_frame);
 
+/**
+ * SVCall_Handler() - Assembly entry point for SVC exception
+ *
+ * This naked function determines which stack (MSP or PSP) was in use
+ * when the SVC instruction was executed, then calls the C handler.
+ *
+ * The CPU hardware automatically stacks R0-R3, R12, LR, PC, xPSR when
+ * entering the exception. We need to pass a pointer to these stacked
+ * registers to the C handler.
+ */
+__attribute__((naked)) void SVCall_Handler(void) {
+    asm volatile(
+        "tst lr, #4\n"              // Test bit 2 of EXC_RETURN (in LR)
+        "ite eq\n"                  // If-Then-Else
+        "mrseq r0, msp\n"           // If bit 2 == 0, get Main Stack Pointer
+        "mrsne r0, psp\n"           // If bit 2 == 1, get Process Stack Pointer
+        "b SVCall_Handler_C\n"      // Branch to C handler with stack pointer in R0
+        ::: "r0"                    // R0 is clobbered
+    );
+}
 
+/* Forward declarations of kernel service functions */
+int sys_write(int fd, const void *buf, size_t count);
+int sys_read(int fd, void *buf, size_t count);
+int sys_getpid(void);
+uint32_t sys___time(void);
+void sys_yield(void);
+void sys__exit(void);
+void sys_reboot(void);
+
+/**
+ * SVCall_Handler_C() - Process the system call
+ *
+ * This function extracts the syscall number and arguments from the
+ * exception stack frame, calls the appropriate kernel service function,
+ * and places the return value back into the stack frame.
+ */
+void SVCall_Handler_C(uint32_t *stack_frame) {
+    // Extract the service ID from R0
+    uint32_t service_id = stack_frame[0];
+
+    // Extract arguments from R1, R2, R3
+    uint32_t arg1 = stack_frame[1];
+    uint32_t arg2 = stack_frame[2];
+    uint32_t arg3 = stack_frame[3];
+
+    // Default return value
+    int32_t return_value = -1;
+
+    // Dispatch to the appropriate kernel service
+    switch(service_id) {
+        case SYS_write:
+            return_value = sys_write((int)arg1, (const void *)arg2, (size_t)arg3);
+            break;
+
+        case SYS_read:
+            return_value = sys_read((int)arg1, (void *)arg2, (size_t)arg3);
+            break;
+
+        case SYS_getpid:
+            return_value = sys_getpid();
+            break;
+
+        case SYS___time:
+            return_value = (int32_t)sys___time();
+            break;
+
+        case SYS_yield:
+            sys_yield();
+            return_value = 0;  // Success
+            break;
+
+        case SYS__exit:
+            sys__exit();
+            // Should not return
+            break;
+
+        case SYS_reboot:
+            sys_reboot();
+            // Should not return
+            break;
+
+        default:
+            // Unsupported syscall - return error
+            return_value = -1;
+            break;
+    }
+
+    // Place the return value back into R0 on the stack
+    // When the exception returns, this value will be in the user's R0
+    stack_frame[0] = (uint32_t)return_value;
 }
 
 
