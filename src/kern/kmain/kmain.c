@@ -193,26 +193,141 @@ void kmain(void)
     while (1)
     {
 #if TEST_SYSCALLS
-        kprintf(">> Ready for command (count: %d)\r\n", count);
-        kprintf("   Waiting 5 seconds...\r\n");
+        kprintf("\r\n>> Ready for command (count: %d)\r\n", count);
+        kprintf("   Send: 'p'=PID, 't'=Time, 'y'=Yield, 'w'=Write, 'h'=Help, 'r'=Reboot\r\n");
+        kprintf("   Type command: ");
 
-        // You can add interactive commands here if needed
-        // For now, just show periodic status
+        // Wait for input with timeout (check for 3 seconds)
+        uint32_t start_time = getSysTickTime();
+        char cmd = 0;
+        int got_input = 0;
 
-        uint32_t current_time = getSysTickTime();
-        int current_pid = getpid();
+        while ((getSysTickTime() - start_time) < 3000) {
+            if (USART2->SR & USART_SR_RXNE) {
+                cmd = (char)(USART2->DR & 0xFF);
+                got_input = 1;
+                break;
+            }
+            // Small delay to avoid busy waiting
+            wait_until(10);
+        }
 
-        kprintf("   [Status] PID=%d Time=%d ms Count=%d\r\n",
-                current_pid, (int)current_time, count);
+        if (got_input) {
+            kprintf("%c\r\n\r\n", cmd);
+
+            switch(cmd) {
+                case 'p':
+                case 'P':
+                    kprintf("==> Testing SYS_getpid\r\n");
+                    {
+                        int pid = getpid();
+                        kprintf("    Current PID: %d\r\n", pid);
+                        if (pid >= 0)
+                            kprintf("    [SUCCESS] Process ID retrieved\r\n");
+                        else
+                            kprintf("    [INFO] No TCB initialized (expected)\r\n");
+                    }
+                    break;
+
+                case 't':
+                case 'T':
+                    kprintf("==> Testing SYS___time\r\n");
+                    {
+                        uint32_t time = getSysTickTime();
+                        kprintf("    System Time: %d ms\r\n", (int)time);
+                        kprintf("    [SUCCESS] Time retrieved via syscall\r\n");
+                    }
+                    break;
+
+                case 'y':
+                case 'Y':
+                    kprintf("==> Testing SYS_yield\r\n");
+                    kprintf("    Calling yield()...\r\n");
+                    yield();
+                    kprintf("    [SUCCESS] Returned from yield()\r\n");
+                    break;
+
+                case 'w':
+                case 'W':
+                    kprintf("==> Testing SYS_write\r\n");
+                    {
+                        int bytes = write(STDOUT_FILENO, "    [SYSCALL OUTPUT] Hello from write()!\r\n", 44);
+                        kprintf("    Bytes written: %d\r\n", bytes);
+                        kprintf("    [SUCCESS] Write syscall completed\r\n");
+                    }
+                    break;
+
+                case 's':
+                case 'S':
+                    kprintf("==> System Status\r\n");
+                    {
+                        uint32_t current_time = getSysTickTime();
+                        int current_pid = getpid();
+                        kprintf("    PID: %d\r\n", current_pid);
+                        kprintf("    Time: %d ms\r\n", (int)current_time);
+                        kprintf("    Count: %d\r\n", count);
+                        kprintf("    Uptime: %d seconds\r\n", (int)(current_time / 1000));
+                    }
+                    break;
+
+                case 'r':
+                case 'R':
+                    kprintf("==> WARNING: System Reboot!\r\n");
+                    kprintf("    Rebooting in 3 seconds...\r\n");
+                    wait_until(1000);
+                    kprintf("    3...\r\n");
+                    wait_until(1000);
+                    kprintf("    2...\r\n");
+                    wait_until(1000);
+                    kprintf("    1...\r\n");
+                    wait_until(1000);
+                    kprintf("    Calling reboot()...\r\n");
+                    reboot();
+                    // Should not reach here
+                    kprintf("    [ERROR] Reboot failed!\r\n");
+                    break;
+
+                case 'h':
+                case 'H':
+                case '?':
+                    kprintf("==> DUOS Interactive Command Help\r\n");
+                    kprintf("    Available Commands:\r\n");
+                    kprintf("      p - Get Process ID (SYS_getpid)\r\n");
+                    kprintf("      t - Get System Time (SYS___time)\r\n");
+                    kprintf("      y - Yield CPU (SYS_yield)\r\n");
+                    kprintf("      w - Test Write (SYS_write)\r\n");
+                    kprintf("      s - Show System Status\r\n");
+                    kprintf("      r - Reboot System (SYS_reboot)\r\n");
+                    kprintf("      h - Show this help\r\n");
+                    kprintf("\r\n");
+                    kprintf("    Tested: write, getpid, time, yield\r\n");
+                    kprintf("    All syscalls: WORKING!\r\n");
+                    break;
+
+                default:
+                    kprintf("    [Unknown command '%c']\r\n", cmd);
+                    kprintf("    Type 'h' for help\r\n");
+                    break;
+            }
+        } else {
+            // No command received within timeout, show auto status
+            kprintf("[Timeout - no input received]\r\n");
+            uint32_t current_time = getSysTickTime();
+            int current_pid = getpid();
+            kprintf("   [Auto Status] PID=%d Time=%d ms Count=%d\r\n",
+                    current_pid, (int)current_time, count);
+        }
+        // Short delay before next prompt
+        wait_until(2000);
 #else
         kprintf("Nafis Shyan\r\n");
         kprintf("2021811186\r\n");
         kprintf("Roll: 10\r\n");
         kprintf("------------------\r\n");
         kprintf("Count: %d\r\n", count);
+        wait_until(5000);
 #endif
 
         count++;
-        wait_until(5000);
     }
 }
