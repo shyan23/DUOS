@@ -38,7 +38,26 @@
 #include <sys_err.h>
 
 static void UART_SetConfig(UART_HandleTypeDef*);
-/*
+
+/**
+ * UART_GetChar() - Read a single character from USART
+ *
+ * Simple blocking implementation - waits for data
+ */
+uint8_t UART_GetChar(USART_TypeDef* usart)
+{
+	// Wait until data is available in receive register
+	while(!(usart->SR & USART_SR_RXNE));
+
+	// Read and return the received data
+	return (uint8_t)(usart->DR & 0xFF);
+}
+
+/**
+ * _USART_READ_STR() - Read a string from USART
+ *
+ * Reads characters until newline, null, space, or size limit
+ */
 uint8_t _USART_READ_STR(USART_TypeDef* usart,uint8_t *buff,uint16_t size)
 {
 	uint8_t n=0;
@@ -46,14 +65,13 @@ uint8_t _USART_READ_STR(USART_TypeDef* usart,uint8_t *buff,uint16_t size)
 		buff[i]=UART_GetChar(usart);
 		n=i;
 		if(buff[i]=='\0' || buff[i] == '\n' || buff[i] == ' ')
-		{ 	
+		{
 			buff[i]='\0';
 			break;
 		}
 	}
 	return n;
 }
-*/
 
 /*
 void UART_GetString(USART_TypeDef *uart,uint16_t size,uint8_t* buff)

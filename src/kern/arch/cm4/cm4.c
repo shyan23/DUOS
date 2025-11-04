@@ -158,7 +158,27 @@ void __enable_fpu()
     // Enable the Floating Point Unit (FPU).
     // Required for any floating point operations.
     SCB->CPACR |= ((0xFUL<<20));
-    
+
+}
+
+/**
+ * __disable_irq() - Disable all interrupts globally
+ *
+ * Uses the ARM CPSID instruction to set PRIMASK
+ */
+void __disable_irq(void)
+{
+    __asm volatile ("cpsid i" : : : "memory");
+}
+
+/**
+ * __enable_irq() - Enable all interrupts globally
+ *
+ * Uses the ARM CPSIE instruction to clear PRIMASK
+ */
+void __enable_irq(void)
+{
+    __asm volatile ("cpsie i" : : : "memory");
 }
 
 uint8_t ms_delay(uint32_t delay)

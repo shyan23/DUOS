@@ -65,6 +65,27 @@ typedef struct {
 TCB_Simple *current_tcb = NULL;
 
 /**
+ * scheduler_select_next_task() - Select next task for execution
+ *
+ * This is a minimal stub implementation for now.
+ * In a full implementation, this would:
+ * 1. Scan the ready queue for READY tasks
+ * 2. Skip TERMINATED tasks
+ * 3. Update current_tcb to point to next task
+ * 4. Implement Round-Robin scheduling
+ *
+ * For now, it does nothing (single-task system)
+ */
+void scheduler_select_next_task(void) {
+    /* Stub implementation - does nothing for now */
+    /* In full implementation: */
+    /* - Iterate through ready_queue */
+    /* - Find next READY task */
+    /* - Update current_tcb pointer */
+    /* - Handle task state transitions */
+}
+
+/**
  * sys_write() - Write data to a file descriptor
  *
  * For STDOUT, this writes to the USART2 console.
